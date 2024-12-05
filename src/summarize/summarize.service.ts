@@ -5,7 +5,8 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class SummarizeService {
   private readonly GROQ_API_KEY = process.env.GROQ_API_KEY;
-  private readonly GROQ_API_URL = 'https://console.groq.com/playground';
+  private readonly GROQ_API_URL =
+    'https://api.groq.com/openai/v1/chat/completions';
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -29,7 +30,20 @@ export class SummarizeService {
           const response = await firstValueFrom(
             this.httpService.post(
               this.GROQ_API_URL,
-              { prompt: group, temperature: 0.7, max_tokens: 50 },
+              {
+                messages: [
+                  {
+                    role: 'user',
+                    content: `Produce summary of these sentences in json:\n${group}`,
+                  },
+                ],
+                temperature: 0.7,
+                max_tokens: 50,
+                response_format: {
+                  type: 'json_object',
+                },
+                model: 'llama3-8b-8192',
+              },
               {
                 headers: {
                   Authorization: `Bearer ${this.GROQ_API_KEY}`,
@@ -38,7 +52,7 @@ export class SummarizeService {
               },
             ),
           );
-          return response.data;
+          return JSON.parse(response.data.choices[0].message.content);
         } catch (error) {
           if (error?.response) {
             return {
@@ -46,17 +60,24 @@ export class SummarizeService {
                 status: error.response.status,
                 data: error.response.data,
               },
+              summary: '',
             };
           } else {
-            console.log('Error:', error);
-            return [];
+            return {
+              summary: '',
+              error: {
+                status: error?.status || error?.code,
+                data: { message: error.message },
+              },
+            };
           }
         }
       }),
     );
     return groups.map((group, idx) => ({
       group,
-      summary: summaries[idx],
+      summary: summaries[idx].summary,
+      error: summaries[idx]?.error,
     }));
   }
 }

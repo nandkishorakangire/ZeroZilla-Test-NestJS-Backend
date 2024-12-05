@@ -17,7 +17,8 @@ import { ConfigModule } from '@nestjs/config';
         ttl: 60000, // 1 minute
         limit: 30, // Max 30 requests per minute
       },
-    ]),ConfigModule.forRoot({
+    ]),
+    ConfigModule.forRoot({
       isGlobal: true, // Makes the configuration globally available
     }),
     SummarizeModule,
