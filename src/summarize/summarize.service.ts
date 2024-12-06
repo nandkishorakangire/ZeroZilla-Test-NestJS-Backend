@@ -34,7 +34,9 @@ export class SummarizeService {
                 messages: [
                   {
                     role: 'user',
-                    content: `Produce summary of these sentences in json:\n${group}`,
+                    content: `Produce brief summary of the given sentences in json object structure as following:\n
+                  {summary: "string"}\n
+                  sentences: ${group}`,
                   },
                 ],
                 temperature: 0.7,
