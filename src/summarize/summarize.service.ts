@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { RequestQueueService } from './request-queue.service';
 
 @Injectable()
 export class SummarizeService {
@@ -8,7 +9,10 @@ export class SummarizeService {
   private readonly GROQ_API_URL =
     'https://api.groq.com/openai/v1/chat/completions';
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly requestQueueService: RequestQueueService,
+  ) {}
 
   private splitTextIntoGroups(
     text: string,
@@ -26,54 +30,56 @@ export class SummarizeService {
     const groups = this.splitTextIntoGroups(text, sentencesPerGroup);
     const summaries = await Promise.all(
       groups.map(async (group) => {
-        try {
-          const response = await firstValueFrom(
-            this.httpService.post(
-              this.GROQ_API_URL,
-              {
-                messages: [
-                  {
-                    role: 'user',
-                    content: `Produce brief summary of the given sentences in json object structure as following:\n
+        return this.requestQueueService.addToQueue(async () => {
+          try {
+            const response = await firstValueFrom(
+              this.httpService.post(
+                this.GROQ_API_URL,
+                {
+                  messages: [
+                    {
+                      role: 'user',
+                      content: `Produce brief summary of the given sentences in json object structure as following:\n
                   {summary: "string"}\n
                   sentences: ${group}`,
+                    },
+                  ],
+                  temperature: 0.7,
+                  max_tokens: 50,
+                  response_format: {
+                    type: 'json_object',
                   },
-                ],
-                temperature: 0.7,
-                max_tokens: 50,
-                response_format: {
-                  type: 'json_object',
+                  model: 'llama3-8b-8192',
                 },
-                model: 'llama3-8b-8192',
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${this.GROQ_API_KEY}`,
-                  'Content-Type': 'application/json',
+                {
+                  headers: {
+                    Authorization: `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
                 },
-              },
-            ),
-          );
-          return JSON.parse(response.data.choices[0].message.content);
-        } catch (error) {
-          if (error?.response) {
-            return {
-              error: {
-                status: error.response.status,
-                data: error.response.data,
-              },
-              summary: '',
-            };
-          } else {
-            return {
-              summary: '',
-              error: {
-                status: error?.status || error?.code,
-                data: { message: error.message },
-              },
-            };
+              ),
+            );
+            return JSON.parse(response.data.choices[0].message.content);
+          } catch (error) {
+            if (error?.response) {
+              return {
+                error: {
+                  status: error.response.status,
+                  data: error.response.data,
+                },
+                summary: '',
+              };
+            } else {
+              return {
+                summary: '',
+                error: {
+                  status: error?.status || error?.code,
+                  data: { message: error.message },
+                },
+              };
+            }
           }
-        }
+        });
       }),
     );
     return groups.map((group, idx) => ({

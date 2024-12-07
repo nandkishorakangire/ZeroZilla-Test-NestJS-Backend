@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { SummarizeModule } from './summarize/summarize.module';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
+import { RequestQueueService } from './summarize/request-queue.service';
 
 @Module({
   imports: [
@@ -24,6 +25,6 @@ import { ConfigModule } from '@nestjs/config';
     SummarizeModule,
   ],
   controllers: [AppController, SummarizeController],
-  providers: [AppService, SummarizeService],
+  providers: [AppService, SummarizeService, RequestQueueService],
 })
 export class AppModule {}
