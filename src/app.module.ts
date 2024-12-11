@@ -8,6 +8,8 @@ import { SummarizeModule } from './summarize/summarize.module';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { RequestQueueService } from './summarize/request-queue.service';
+import { SummarizeHelper } from './summarize/summarize.helper';
+import { SummarizeUtility } from './summarize/summarize.utility';
 
 @Module({
   imports: [
@@ -25,6 +27,12 @@ import { RequestQueueService } from './summarize/request-queue.service';
     SummarizeModule,
   ],
   controllers: [AppController, SummarizeController],
-  providers: [AppService, SummarizeService, RequestQueueService],
+  providers: [
+    AppService,
+    SummarizeService,
+    RequestQueueService,
+    SummarizeHelper,
+    SummarizeUtility,
+  ],
 })
 export class AppModule {}
