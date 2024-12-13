@@ -36,7 +36,7 @@ Then generate pure JSON output for below expected schema:
               response_format: {
                 type: 'json_object',
               },
-              model: 'llama3-8b-8192',
+              model: process.env.AI_MODEL,
             },
             {
               headers: {
