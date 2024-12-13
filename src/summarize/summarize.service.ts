@@ -9,20 +9,18 @@ export class SummarizeService {
     private readonly summarizeUtility: SummarizeUtility,
   ) {}
 
-  async summarize(text: string, sentencesPerGroup: number): Promise<any[]> {
+  async summarize(text: string, sentencesPerGroup: number): Promise<any> {
     const groups = this.summarizeHelper.splitTextIntoGroups(
       text,
       sentencesPerGroup,
     );
-    const summaries = await Promise.all(
-      groups.map(async (group) => {
-        return this.summarizeUtility.generateTextSummary(group);
-      }),
-    );
-    return groups.map((group, idx) => ({
-      group,
-      summary: summaries[idx].summary,
-      error: summaries[idx]?.error,
-    }));
+    const promiseArray = [];
+    for (let i = 0; i < groups.length; i += 10) {
+      promiseArray.push(
+        this.summarizeUtility.generateTextSummary(groups.slice(i, i + 10)),
+      );
+    }
+    const summaries = await Promise.all(promiseArray);
+    return summaries;
   }
 }

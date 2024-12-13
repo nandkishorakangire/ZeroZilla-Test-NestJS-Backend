@@ -52,21 +52,22 @@ export class SummarizeGateway
   ) {
     const { text, sentencesPerGroup } = data;
     try {
+      if (!client.connected) {
+        return;
+      }
       const groups = this.summarizeHelper.splitTextIntoGroups(
         text,
         sentencesPerGroup,
       );
-      for (const [idx, group] of groups.entries()) {
-        if (!client.connected) {
+
+      for (let i = 0; i < groups.length; i += 10) {
+        const result = await this.summarizeUtility.generateTextSummary(
+          groups.slice(i, i + 10),
+        );
+        client.emit('summary', result);
+        if (result?.error) {
           break;
         }
-        const result = await this.summarizeUtility.generateTextSummary(group);
-        client.emit('summary', {
-          group,
-          summary: result.summary,
-          error: result?.error,
-          offset: idx,
-        });
       }
     } catch (error) {
       client.emit('error', { message: 'Failed to prefetch data', error });

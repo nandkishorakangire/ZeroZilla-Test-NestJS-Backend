@@ -15,8 +15,8 @@ export class SummarizeUtility {
   ) {}
 
   async generateTextSummary(
-    text: string,
-  ): Promise<{ summary: string; error?: any }> {
+    text_groups: string[],
+  ): Promise<{ result: { group: string; summary: string }[]; error?: any }> {
     return this.requestQueueService.addToQueue(async () => {
       try {
         const response = await firstValueFrom(
@@ -26,13 +26,13 @@ export class SummarizeUtility {
               messages: [
                 {
                   role: 'user',
-                  content: `Produce brief summary of the given sentences in json object structure as following:\n
-                  {summary: "string"}\n
-                  sentences: ${text}`,
+                  content: `Task: Strictly produce exactly ${text_groups?.length || 0}, brief and non virtual context summary for each group in following array of length ${text_groups?.length || 0}.
+Array: ${JSON.stringify(text_groups.map((group) => ({ group })))}
+Then generate pure JSON output for below expected schema:
+{result:[{group: "group number",summary: "summary of the group sentences in string"}]}`,
                 },
               ],
-              temperature: 0.7,
-              max_tokens: 50,
+              temperature: 0.3,
               response_format: {
                 type: 'json_object',
               },
@@ -46,22 +46,46 @@ export class SummarizeUtility {
             },
           ),
         );
-        return JSON.parse(response.data.choices[0].message.content);
+        // const parsedJSON = ((result) => {
+        //   if (result.includes('{') && result.includes('}')) {
+        //     result = result.substring(result.indexOf('{'));
+        //     if (!result.endsWith('}')) {
+        //       result = result.substring(0, result.lastIndexOf('}') + 1);
+        //     }
+        //   }
+        //   return result;
+        // })(response.data.choices[0].message.content);
+
+        // return JSON.parse(JSON.parse(JSON.stringify(parsedJSON.replaceAll("\n","").replaceAll("\"\"", "\""))));
+        const summaries = JSON.parse(
+          response.data.choices[0].message.content,
+        ).result;
+        const data = {
+          result: text_groups.map((g, i) => {
+            return { group: g, summary: summaries[i].summary };
+          }),
+        };
+        return data;
       } catch (error) {
         if (error?.response) {
+          console.log(
+            'response.data',
+            JSON.stringify(error.response.data, undefined, 1),
+          );
           return {
             error: {
               status: error.response.status,
-              data: error.response.data,
+              ...error.response.data.error,
             },
-            summary: '',
+            result: [],
           };
         } else {
           return {
-            summary: '',
+            result: [],
             error: {
-              status: error?.status || error?.code,
-              data: { message: error.message },
+              code: error?.code,
+              status: error?.status,
+              message: error.message,
             },
           };
         }
